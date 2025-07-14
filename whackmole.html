@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Whack-a-Mole</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(to bottom right, #f0f4ff, #c1d3ff);
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 3em;
+      color: #333;
+    }
+
+    .score-board {
+      font-size: 1.5em;
+      margin-bottom: 10px;
+      color: #222;
+    }
+
+    #start-btn {
+      padding: 12px 24px;
+      font-size: 18px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      transition: background 0.3s;
+      cursor: pointer;
+    }
+
+    #start-btn:hover {
+      background: #4338ca;
+    }
+
+    .game-container {
+      display: grid;
+      grid-template-columns: repeat(3, 120px);
+      grid-gap: 20px;
+      justify-content: center;
+      margin-top: 30px;
+    }
+
+    .hole {
+      width: 120px;
+      height: 120px;
+      background: #e0e7ff;
+      border-radius: 50%;
+      position: relative;
+      box-shadow: inset -5px -5px 15px #ffffff, inset 5px 5px 15px #bfc8e4;
+      cursor: pointer;
+    }
+
+    .mole {
+      font-size: 50px;
+      position: absolute;
+      top: 25px;
+      left: 0;
+      right: 0;
+      margin: auto;
+      display: none;
+      animation: pop 0.2s ease;
+    }
+
+    .hole.active .mole {
+      display: block;
+    }
+
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .whack-effect {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: red;
+      font-weight: bold;
+      font-size: 22px;
+      animation: fadeOut 0.4s ease forwards;
+      pointer-events: none;
+    }
+
+    @keyframes fadeOut {
+      0% { opacity: 1; transform: translateX(-50%) scale(1); }
+      100% { opacity: 0; transform: translateX(-50%) scale(2); }
+    }
+
+    /* Scorecard Modal */
+    .modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.2);
+      text-align: center;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .modal h2 {
+      margin-bottom: 10px;
+      font-size: 28px;
+      color: #111;
+    }
+
+    .modal p {
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+
+    .modal button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .modal button:hover {
+      background: #4338ca;
+    }
+
+    @keyframes fadeIn {
+      from { transform: scale(0.7); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🐹 Whack-a-Mole</h1>
+  <div class="score-board">
+    ⏱ Time: <span id="time">30</span>s | 🎯 Score: <span id="score">0</span>
+  </div>
+  <button id="start-btn">Start Game</button>
+
+  <div class="game-container" id="game">
+    <!-- 9 holes -->
+    <div class="hole"><div class="mole">🐹</div></div>
+    <div class="hole"><div class="mole">🐹</div></div>
+    <div class="hole"><div class="mole">🐹</div></div>
+    <div class="hole"><div class="mole">🐹</div></div>
+    <div class="hole"><div class="mole">🐹</div></div>
+    <div class="hole"><div class="mole">🐹</div></div>
+    <div class="hole"><div class="mole">🐹</div></div>
+    <div class="hole"><div class="mole">🐹</div></div>
+    <div class="hole"><div class="mole">🐹</div></div>
+  </div>
+
+  <!-- Modal Scorecard -->
+  <div class="modal" id="scoreModal">
+    <div class="modal-content">
+      <h2>Game Over!</h2>
+      <p>Your Final Score: <span id="finalScore">0</span></p>
+      <button onclick="closeModal()">Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    const holes = document.querySelectorAll('.hole');
+    const scoreEl = document.getElementById('score');
+    const timeEl = document.getElementById('time');
+    const startBtn = document.getElementById('start-btn');
+    const modal = document.getElementById('scoreModal');
+    const finalScoreEl = document.getElementById('finalScore');
+
+    let score = 0;
+    let timeLeft = 30;
+    let gameInterval;
+    let moleTimer;
+
+    function randomHole() {
+      holes.forEach(hole => hole.classList.remove('active'));
+      const index = Math.floor(Math.random() * holes.length);
+      holes[index].classList.add('active');
+    }
+
+    function showWhackEffect(hole) {
+      const effect = document.createElement('div');
+      effect.classList.add('whack-effect');
+      effect.textContent = 'WHACK!';
+      hole.appendChild(effect);
+      setTimeout(() => effect.remove(), 400);
+    }
+
+    function startGame() {
+      score = 0;
+      timeLeft = 30;
+      scoreEl.textContent = score;
+      timeEl.textContent = timeLeft;
+      startBtn.disabled = true;
+      modal.style.display = 'none';
+
+      gameInterval = setInterval(() => {
+        timeLeft--;
+        timeEl.textContent = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(gameInterval);
+          clearInterval(moleTimer);
+          holes.forEach(hole => hole.classList.remove('active'));
+          showScorecard();
+        }
+      }, 1000);
+
+      moleTimer = setInterval(randomHole, 800);
+    }
+
+    function showScorecard() {
+      finalScoreEl.textContent = score;
+      modal.style.display = 'flex';
+      startBtn.disabled = false;
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+      startGame();
+    }
+
+    holes.forEach(hole => {
+      hole.addEventListener('click', () => {
+        if (hole.classList.contains('active')) {
+          score++;
+          scoreEl.textContent = score;
+          showWhackEffect(hole);
+          hole.classList.remove('active');
+        }
+      });
+    });
+
+    startBtn.addEventListener('click', startGame);
+  </script>
+</body>
+</html>
